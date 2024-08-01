@@ -1,13 +1,10 @@
 var express = require('express');
 const { verifyToken } = require('../middlewares/token');
+const nearbyUsers = require('../controllers/users');
 var router = express.Router();
 
 /* GET users listing. */
-router.get('/user', function (req, res, next) {
-  res.send('respond with a resource');
-});
-router.get('/userss', verifyToken, function (req, res, next) {
-  res.send('respond with a resource 22222222');
-});
+router.get('/nearby_users/:km', nearbyUsers);
+
 
 module.exports = router;
