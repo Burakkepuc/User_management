@@ -25,13 +25,11 @@ const createToken = async (user, res) => {
 
 const verifyToken = async (req, res, next) => {
   const headerToken = req.headers['authorization'] && req.headers['authorization'].startsWith("Bearer")
-  console.log(headerToken);
   if (!headerToken) {
     return handleErrorResponse(res, enums.HTTP_CODES.UNAUTHORIZED, 'Invalid Session', 'Please sign in');
   }
 
   const token = req.headers['authorization'].split(' ')[1]
-  console.log(token);
 
   jwt.verify(token, process.env.JWT_SECRET_KEY, async (err, decoded) => {
     if (err) {

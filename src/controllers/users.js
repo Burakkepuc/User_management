@@ -4,6 +4,7 @@ const handleErrorResponse = require('../utils/handleError');
 const enums = require('../utils/enum')
 const { createToken } = require('../middlewares/token');
 const haversineDistance = require('haversine-distance');
+const { sendNotification } = require('../utils/webSocket');
 
 
 const prismaClient = new PrismaClient();
@@ -15,7 +16,7 @@ const nearbyUsers = async (req, res) => {
     const km = parseFloat(req.params.km); // URL'den mesafeyi al
 
     if (isNaN(km) || km <= 0) {
-      return res.status(400).json({ error: "Invalid distance parameter. It must be a positive number." });
+      return handleErrorResponse(res, enums.HTTP_CODES.NOT_FOUND, "Invalid distance parameter.", "It must be a positive number.")
     }
 
     const userId = req.user.id;
@@ -26,7 +27,7 @@ const nearbyUsers = async (req, res) => {
     });
 
     if (!user || !user.location) {
-      return res.status(404).json({ error: "User or location not found." });
+      return handleErrorResponse(res, enums.HTTP_CODES.NOT_FOUND, "Not Found", "User or location not found.")
     }
 
     const userLocation = {
@@ -88,7 +89,19 @@ const likeUser = async (req, res) => {
 
 
     if (userId === parseInt(toUserId)) {
-      return res.status(400).json({ error: "You cannot like yourself." });
+      return handleErrorResponse(res, enums.HTTP_CODES.BAD_REQUEST, "Error", "You Cannot like your profile.")
+    }
+
+    const existingLike = await prismaClient.like.findFirst({
+      where: {
+        fromUserId: userId,
+        toUserId: parseInt(toUserId),
+      },
+    });
+
+    if (existingLike) {
+      return handleErrorResponse(res, enums.HTTP_CODES.BAD_REQUEST, "Already Liked", "You have already liked this user.")
+
     }
 
     const like = await prismaClient.like.create({
@@ -98,8 +111,8 @@ const likeUser = async (req, res) => {
       },
     });
 
-    // Send notification
-    // sendNotification(toUserId, { type: 'like', userId });
+
+    sendNotification(toUserId, { type: 'like', userId });
 
     res.json(Response.successResponse(like))
   } catch (error) {
@@ -119,7 +132,6 @@ const dislikeUser = async (req, res) => {
         toUserId: parseInt(toUserId),
       },
     });
-    console.log(existingLike);
 
     if (!existingLike) {
       return handleErrorResponse(res, enums.HTTP_CODES.CONFLICT, "Didn't like", "You haven't  liked this user.");
@@ -127,9 +139,12 @@ const dislikeUser = async (req, res) => {
 
     await prismaClient.like.delete({
       where: {
-        id: existingLike.id, // Beğeniyi silmek için ID kullanın
+        id: existingLike.id,
       },
     });
+
+    sendNotification(toUserId, { type: 'dislike', fromUserId: userId });
+
 
     res.json(Response.successResponse({ success: true }))
   } catch (error) {
@@ -178,12 +193,11 @@ const getLikedUsers = async (req, res) => {
 
 const getUsersWhoLikedMe = async (req, res) => {
   try {
-    const userId = req.user.id; // Kullanıcının ID'sini alın
+    const userId = req.user.id;
 
-    // Kullanıcının kendisini beğenen kullanıcıları bulma
     const usersWhoLikedMe = await prismaClient.like.findMany({
       where: {
-        toUserId: userId // Beğenilen kullanıcı ID'si
+        toUserId: userId
       },
       select: {
         fromUser: {
@@ -228,7 +242,7 @@ const updateProfile = async (req, res) => {
     });
 
     if (!existingUser) {
-      return res.status(404).json({ error: 'User not found.' });
+      return handleErrorResponse(res, enums.HTTP_CODES.BAD_REQUEST, "Not Found", "User Not Found.")
     }
 
     const updatedUser = await prismaClient.user.update({

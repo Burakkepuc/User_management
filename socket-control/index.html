@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Socket Control</title>
+  </head>
+  <body></body>
+
+  <script>
+    const USER_ID = 27; // Örnek USER_ID
+
+    const ws = new WebSocket('ws://localhost:3000');
+
+    ws.onopen = () => {
+      console.log('WebSocket connection opened');
+      ws.send(JSON.stringify({type: 'register', userId: USER_ID}));
+    };
+
+    ws.onmessage = message => {
+      console.log('Received WebSocket message:', message.data);
+      const parsedMessage = JSON.parse(message.data);
+      if (parsedMessage.type === 'like') {
+        console.log(`You have been liked by user ${parsedMessage.userId}`);
+      } else if (parsedMessage.type === 'dislike') {
+        console.log(`User ${parsedMessage.fromUserId} has disliked you`);
+      }
+    };
+
+    ws.onerror = error => {
+      console.error('WebSocket error:', error);
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+  </script>
+</html>

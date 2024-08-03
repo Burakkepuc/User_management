@@ -27,7 +27,6 @@ const register = async (req, res) => {
     }
 
     hashedPassword = await bcrypt.hash(password, 10)
-    console.log("hash şifre :" + req.body.password);
 
 
     const user = await prismaClient.user.create({
